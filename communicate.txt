@@ -1,0 +1,25 @@
+function [ dist ] = Communicate( x,zuobiao )
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
+global PopSize;
+global CommunicationRange;
+global Dim;
+for iServerDim=1:Dim
+    x(PopSize+1,iServerDim)=0;%server的位置在(0.0)点
+end%for iServerDim=1:Dim
+for i=1:PopSize+1
+    for j=1:PopSize+1
+        Distance(i,j)=sqrt((x(i,1)-x(j,1)).^2+(x(i,2)-x(j,2)).^2);
+        if Distance(i,j)<2*CommunicationRange
+            DGW(i,j)=1;
+        else
+            DGW(i,j)=inf;
+        end%if Distance(i,j)<2*R
+    end%for j=1:PopSize
+end%for i=1:PopSize
+b=[1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1;1:PopSize+1];
+a=b';
+DG=sparse(a,b,DGW);
+[dist,path,pred] = graphshortestpath(DG,zuobiao,PopSize+1);
+end%function [ dist ] = Communicate( x(i) )
+

@@ -1,0 +1,89 @@
+
+%%%%%%%%%%%函数是DF1
+function [result] = fitness(x1,Dim,VMobileTarget,t)
+%function [ result ] = fitness(x(i,:),Dim)
+%function [result] = fitness(x1,Dim,VMobileTargetBuChang)
+%UNTITLED2 Summary of this function goes here
+%   Detailed explanation goes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+global a;
+global b;
+global Dim;
+global MaxIter;
+global XMax;
+Hi=b;
+Ri=1;
+global Xi;
+global Yi;
+%%static
+if 0%static
+sum1=0;
+sum2=0;
+sum1=(x1(1)-Xi).^2+(x1(2)-Yi).^2;
+sum2=Hi;
+result=sum2-Ri*sqrt(sum1);
+end%if 0%static
+%%static
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%dynamic1%%VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*v(iother,:);%用于适应值函数，记录目标从开始迭代到现在运动的距离，对应于dynamic1,dynamic4%不要用
+if 0
+%%%%%%%%attempts to find a mobile target whose top velocity is 20% of the
+%%%%%%%%top speed of the robots
+sum1=0;
+sum2=0;
+for j1=1:Dim
+    if VMobileTarget(j1)>XMax
+        VMobileTarget(j1)=XMax;
+    end%if VMobileTarget(j1)>XMax
+    if VMobileTarget(j1)<-XMax
+        VMobileTarget(j1)=-XMax;
+    end%if VMobileTarget(j1)<-XMax    
+end%for j=1:Dim
+sum1=(x1(1)-Xi+VMobileTarget(1)).^2+(x1(2)-Yi+VMobileTarget(2)).^2;
+sum2=Hi;
+result=sum2-Ri*sqrt(sum1);
+end%if 0
+%%dynamic1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%dynamic2
+if 0
+sum1=0;
+sum2=0;
+sum1=(x1(1)-Xi).^2+(x1(2)-Yi).^2;
+sum2=Hi-((2*Hi)/(3*MaxIter))*t;
+result=sum2-Ri*sqrt(sum1);
+end%if 0
+%%dynamic2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%dynamic3
+%if 0
+sum1=0;
+sum2=0;
+sum1=(x1(1)-Xi).^2+(x1(2)-Yi).^2;
+sum2=Hi-((Hi)/(1500))*t;
+result=sum2-Ri*sqrt(sum1);
+%end%if 0
+%%dynamic3
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%dynamic4
+%%%%%%track a target moving at 20% of the speed of the robots whose fitness
+%%%%%%value is degrading and will completely depleted by 1500 timesteps
+if 0
+sum1=0;
+sum2=0;
+for j1=1:Dim
+    if VMobileTarget(j1)>XMax
+        VMobileTarget(j1)=XMax;
+    end%if VMobileTarget(j1)>XMax
+    if VMobileTarget(j1)<-XMax
+        VMobileTarget(j1)=-XMax;
+    end%if VMobileTarget(j1)<-XMax    
+end%for j=1:Dim
+sum1=(x1(1)-Xi+VMobileTarget(1)).^2+(x1(2)-Yi+VMobileTarget(2)).^2;
+sum2=Hi-((Hi)/(1500))*t;
+result=sum2-Ri*sqrt(sum1);
+end%if 0
+%%dynamic4
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end%function [ result ] = fitness( input_args )
+

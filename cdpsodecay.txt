@@ -1,0 +1,232 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+TestTimes=1000;
+for iTestTimes=1:TestTimes
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%初始化
+global PopSize;
+PopSize=8;
+global Dim;
+Dim=2;
+
+global MaxIter;
+MaxIter=2000;
+%w=0.95;
+w_start=0.9;%惯性权重的开始值
+w_end=0.4;%惯性权重的最后值
+c1=2;
+c2=2;
+c3=2;
+global a;%适应值函数的参数，同时，可以调整搜索空间的宽度
+a=100;
+global XMax;
+XMax=a;
+global b;
+b=100;%适应值函数的参数
+c=20;%搜索时间
+SearchSpaceWidth=2*a;
+global CommunicationRange;
+CommunicationRange=SearchSpaceWidth*0.25;
+VRobotMax=10;
+%BkAdjust=0;%相当于衰减参数，即每次衰减多少,不衰减，即CdPSO
+BkAdjust=0.05;%相当于衰减参数，即每次衰减多少,衰减，即CdPSO-deacy
+CommuSuccessTimes=0;%初始化
+BK2=1-BkAdjust*CommuSuccessTimes;
+PiUpdateSucess=0*rand(PopSize,1);%初始化，个体极值更新成功，
+%Bk2=1-BkAdjust*CommuSuccessTimes;%应该放到后面求出CommuSuccessTimes
+VMobileTargetMax=0.2*VRobotMax;
+VMobileTarget=0*rand(PopSize,Dim);%用于后面“VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*v(iother,:);%用于适应值函数，记录目标从开始迭代到现在运动的距离，对应于dynamic1,dynamic4”，此处行不通，因为每一代会使速度增加PopSize次
+%VMobileTarget=0.2*VRobotMax;%直接用于fitness函数
+%VMobileTargetBuChang=VMobileTarget;
+for iServerDim=1:Dim
+    x(PopSize+1,iServerDim)=0;%server的位置在(0.0)点
+end%for iServerDim=1:Dim
+tc=0*rand(PopSize,1);%初始时tc=0
+fc=0*rand(PopSize,1);%初始时fc=0
+gbest=-1;%server即全局最优值初始化为一个较小的值
+x=2*a*rand(PopSize,Dim)-a;
+v=VRobotMax*(2*rand(PopSize,Dim)-1);
+%pbest=rand(PopSize,Dim);%节省空间，如果不对，可以去掉这两句
+%xbest=rand(PopSize,Dim);%节省空间，如果不对，可以去掉这两句
+global Xi;
+Xi=0;
+global Yi;
+Yi=0;
+%初始化结束
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%第一次迭代
+t=1;
+for ifirst=1:PopSize
+    f(ifirst)=fitness(x(ifirst,:),Dim,VMobileTarget(ifirst,:),t);%个体的适应值
+    %f(ifirst)=fitness(x(ifirst,:),Dim,VMobileTargetBuChang);%个体的适应值
+    pi(ifirst,:)=x(ifirst,:);%个体位置
+    pbest(ifirst)=f(ifirst);%个体最好值
+    xbest(ifirst,:)=pi(ifirst,:);%%个体最好值取得的位置
+    Bk(ifirst)=1-BkAdjust*PiUpdateSucess(ifirst);
+    fc(ifirst)=inf;
+    xcbest(ifirst,:)=x(ifirst,:);%交流能力最强的位置
+    if(f(ifirst)>gbest)
+        dist=Communicate( x,ifirst );%交流
+        if(dist<=PopSize)%交流成功
+            %H(ifirst,t)=dist;
+            fc(ifirst)=2.718/exp(dist);
+            fcbest=fc(ifirst);%交流能力强弱的标志，越小越好，交流能力最大
+            xcbest(ifirst,:)=x(ifirst,:);%交流能力最强的位置
+            gbest=f(ifirst);%全局最优值
+            pg=x(ifirst,:);%全局最优值的位置
+            tc(ifirst)=t;%tc设置为t，便于下一次search
+            %CommuSuccessTimes(ifirst)=CommuSuccessTimes(ifirst)+1;
+        %else
+            %H(ifirst,t)=inf;
+            %fc(ifirst)=inf;
+            %xcbest(ifirst,:)=x(ifirst,:);%交流能力最强的位置
+        end%if(dist<=PopSize)      
+    end%if(p(ifirst)>gbest)
+    si(ifirst,:)=x(ifirst,:);%记录交流时的最好的位置 
+end%ifirst=1:PopSize
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%误差
+%EculideanError(t)=sqrt((Xi-pg(1)).^2+(Yi-pg(2)).^2);%%%%%%%%%%%%%%%%%%%%%%static,dynamic2,dynamic3%%%%%%%%%%%%%%%%%%%%%%%
+EculideanError(t)=sqrt((Xi-VMobileTarget(1)-pg(1)).^2+(Yi-VMobileTarget(2)-pg(2)).^2);%%%%%%%%%%%%%%%%%%%%%%dynamic1,dynamic4%%%%%%%%%%%%%%%%%%%%%%%
+%%%误差
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for t=2:MaxIter
+    w_now=((w_start-w_end)*(MaxIter-t)/MaxIter)+w_end;
+    for iother=1:PopSize
+        offset=(c/PopSize)*(iother-1);%偏移量
+        if(t-tc(iother)<c+offset)
+            v(iother,:)=w_now*v(iother,:)+c1*rand()*(xbest(iother,:)-x(iother,:))+c2*rand()*(pg-x(iother,:));%PSO速度更新公式
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %if 0%速度限制
+            for iv=1:Dim
+            if v(iother,iv)<-VRobotMax%超过速度限制的，等于速度的限制
+               v(iother,iv)=-VRobotMax;
+            end%if v(iother,:)<-VRobotMax%超过速度限制的，等于速度的限制
+            end%for iv=1:Dim
+            for jv=1:Dim
+            if v(iother,jv)>VRobotMax%超过速度限制的，等于速度的限制
+               v(iother,jv)=VRobotMax;
+            end%if v(iother,:)<-VRobotMax%超过速度限制的，等于速度的限制
+            end%for jv=1:Dim
+            %end%if 0%速度限制
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            x(iother,:)=x(iother,:)+v(iother,:);%PSO位置更新公式
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %if 0%位置限制
+            for ix=1:Dim
+            if x(iother,ix)>XMax%超过位置限制的，等于位置的限制
+               x(iother,ix)=XMax; 
+            end%if x(iother,:)>b%超过位置限制的，等于位置的限制
+            end%for ix=1:Dim
+            for jx=1:Dim
+            if x(iother,jx)<-XMax%超过位置限制的，等于位置的限制
+               x(iother,jx)=-XMax; 
+            end%if x(iother,:)>b%超过位置限制的，等于位置的限制
+            end%for jx=1:Dim
+            %end%if 0%位置限制
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*0.1*v(iother,:);%对应于dynamic1
+            VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*v(iother,:);%对应于dynamic4
+            %VMobileTargetBuChang=VMobileTarget*t;
+            f(iother)=fitness(x(iother,:),Dim,VMobileTarget(iother,:),t);%个体的适应值
+            %f(iother)=fitness(x(iother,:),Dim,VMobileTargetBuChang);%个体的适应值
+            pi(iother,:)=x(iother,:);%个体对应适应值的位置
+            %if(f(iother)>pbest(iother))%静态%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if(f(iother)>pbest(iother)*Bk(iother))%动态%%%%%%%%%%%%%%%%%%%%
+                PiUpdateSucess(iother)=PiUpdateSucess(iother)+1;
+                Bk(iother)=1-BkAdjust*PiUpdateSucess(iother);
+                pbest(iother)=f(iother);%个体最好值
+                xbest(iother,:)=pi(iother,:);%%个体最好值取得的位置
+            end%if(f(iother)>pbest(iother))
+        else t-tc(iother)>=c+offset%if(t-tc(iother)<c+offset)
+            %if(pbest(iother)>gbest)%静态%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if(pbest(iother)>gbest*BK2)%动态%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                    
+                dist=Communicate( x,iother );%交流
+                if(dist<=PopSize)%交流成功
+                    %H(iother,t)=dist;
+                    CommuSuccessTimes=CommuSuccessTimes+1;%当全局最优值更新以后，则BK调整参数需要改变
+                    Bk2=1-BkAdjust*CommuSuccessTimes;
+                    fc(iother)=2.718/exp(dist);
+                    if fc(iother)<fcbest
+                    fcbest=fc(iother);%交流能力强弱的标志，越小越好，交流能力最大
+                    xcbest(iother,:)=x(iother,:);%交流能力最强的位置
+                    end%if fc(iother)<fcbest
+                    gbest=f(iother);%全局最优值
+                    pg=x(iother,:);%全局最优值的位置
+                    tc(iother)=t;%tc设置为t，便于下一次search
+                else
+                    v(iother,:)=c3*rand()*(xcbest(iother,:)-x(iother,:));%交流时速度的更新
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %if 0%速度限制
+                    for iv=1:Dim
+                        if v(iother,iv)<-VRobotMax%超过速度限制的，等于速度的限制
+                            v(iother,iv)=-VRobotMax;
+                        end%if v(iother,:)<-VRobotMax%超过速度限制的，等于速度的限制
+                    end%for iv=1:Dim
+                    for jv=1:Dim
+                        if v(iother,jv)>VRobotMax%超过速度限制的，等于速度的限制
+                            v(iother,jv)=VRobotMax;
+                        end%if v(iother,:)<-VRobotMax%超过速度限制的，等于速度的限制
+                    end%for jv=1:Dim
+                    %end%if 0%速度限制
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    x(iother,:)=x(iother,:)+v(iother,:);%交流时位置的更新
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %if 0%位置限制
+                    for ix=1:Dim
+                        if x(iother,ix)>XMax%超过位置限制的，等于位置的限制
+                            x(iother,ix)=XMax; 
+                        end%if x(iother,:)>b%超过位置限制的，等于位置的限制
+                    end%for ix=1:Dim
+                    for jx=1:Dim
+                        if x(iother,jx)<-XMax%超过位置限制的，等于位置的限制
+                            x(iother,jx)=-XMax; 
+                        end%if x(iother,:)>b%超过位置限制的，等于位置的限制
+                    end%for jx=1:Dim
+                    %end%if 0%位置限制
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*0.1*v(iother,:);%对应于dynamic1
+                    VMobileTarget(iother,:)=VMobileTarget(iother,:)+0.2*v(iother,:);%对应于dynamic4
+                    %VMobileTargetBuChang=VMobileTarget*t;
+                    %H(iother,t)=inf;
+                    %fc(iother)=inf;
+                end%if(dist<=PopSize)
+            else
+                tc(iother)=t;
+            %end                
+            end%if(pbest(iother)>gbest)
+        end%if(t-tc(iother)<c+offset)
+    end%for iother=1:PopSize
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%误差
+    %EculideanError(t)=sqrt((Xi-pg(1)).^2+(Yi-pg(2)).^2);%%%%%%%%%%%%%%%%%%%%%%static,dynamic2,dynamic3%%%%%%%%%%%%%%%%%%%%%%%
+    EculideanError(t)=sqrt((Xi-VMobileTarget(1)-pg(1)).^2+(Yi-VMobileTarget(2)-pg(2)).^2);%%%%%%%%%%%%%%%%%%%%%%dynamic1,dynamic4%%%%%%%%%%%%%%%%%%%%%%%
+    %%%误差
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end%for t=2:MaxIter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%画图
+if 0%画图
+for iplot=1:MaxIter
+    yplot(iplot)=EculideanError(iplot);
+end%for iplot=1:2000
+%plot(1:MaxIter,yplot,'b');
+plot(1:MaxIter,yplot,'r');
+xlabel('Timesteps');
+ylabel('Solution Error');
+%legend('CdPSO');
+legend('CdPSO-decay');
+hold on;
+end%if 0%画图
+%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+SummerError=0;
+for TError=1800:2000%统计1800-2000的误差之和，便于下面求平均值
+    SummerError=SummerError+EculideanError(TError);
+end%for TError=1800:2000%统计1800-2000的误差之和，便于下面求平均值
+
+MeanErrorCdPSODecay(iTestTimes)=SummerError/201;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end%for iTestTimes=1:TestTimes
